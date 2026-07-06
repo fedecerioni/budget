@@ -24,6 +24,10 @@
   .hdr-card{background:#16162a;border-radius:12px;padding:11px 10px}
   .hdr-card-label{margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:1px}
   .hdr-card-val{margin:3px 0 0;font-size:15px;font-weight:800;line-height:1.1}
+  .month-nav{display:flex;align-items:center;justify-content:center;gap:14px}
+  .month-nav-btn{background:#16162a;border:none;color:#cbd5e1;width:28px;height:28px;border-radius:8px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .month-nav-btn:disabled{opacity:.25;cursor:default}
+  .month-nav-btn:active:not(:disabled){background:#1e1e2e}
 
   /* Nav tabs */
   .nav{display:flex;background:#16162a;border-radius:12px;padding:4px;gap:4px;margin-top:14px}
@@ -114,7 +118,11 @@
 <!-- HEADER -->
 <div class="hdr">
   <div class="page">
-    <p class="hdr-label" id="hdr-month">Giu 2026</p>
+    <div class="month-nav">
+      <button class="month-nav-btn" onclick="shiftMonth(-1)" aria-label="Mese precedente">‹</button>
+      <p class="hdr-label" id="hdr-month" style="margin:0">Giu 2026</p>
+      <button class="month-nav-btn" id="month-next-btn" onclick="shiftMonth(1)" aria-label="Mese successivo">›</button>
+    </div>
     <h1 class="hdr-title">Budget Personale</h1>
     <div class="hdr-grid">
       <div class="hdr-card" style="border:1px solid #10b98122">
@@ -216,6 +224,14 @@
         <p id="saldo-imp-note" style="margin:8px 0 0;font-size:11px;color:#475569"></p>
       </div>
       <div class="info-card">
+        <p class="info-card-title">Andamento ultimi mesi</p>
+        <div id="trend-chart"></div>
+      </div>
+      <div class="info-card">
+        <p class="info-card-title">Confronto con l'anno precedente</p>
+        <div id="yoy-compare"></div>
+      </div>
+      <div class="info-card">
         <p class="info-card-title">Fonti di reddito (netto)</p>
         <div id="saldo-fonti"></div>
       </div>
@@ -232,7 +248,7 @@
 const EXPENSE_CATS = [
   {id:"casa",      label:"Casa",              emoji:"🏠", color:"#6366f1"},
   {id:"cibo",      label:"Cibo & Ristoranti", emoji:"🍽️", color:"#f59e0b"},
-  {id:"trasporti", label:"Trasporti",          emoji:"🚗", color:"#10b981"},
+  {id:"viaggi",    label:"Viaggi",             emoji:"✈️", color:"#10b981"},
   {id:"lavoro",    label:"Lavoro",             emoji:"💼", color:"#3b82f6"},
   {id:"salute",    label:"Salute & Sport",     emoji:"🏃", color:"#ef4444"},
   {id:"shopping",  label:"Shopping",           emoji:"🛍️", color:"#ec4899"},
@@ -272,6 +288,9 @@ function incassatoNetto(item) {
 // ── STATE ─────────────────────────────────────────────────────────────────
 let expenses = JSON.parse(localStorage.getItem("budget_exp")||"[]");
 let incomes  = JSON.parse(localStorage.getItem("budget_inc")||"[]");
+// Migrazione: la categoria "trasporti" è stata rinominata in "viaggi"
+expenses = expenses.map(e => e.category === "trasporti" ? {...e, category:"viaggi"} : e);
+localStorage.setItem("budget_exp", JSON.stringify(expenses));
 let currentTab = "spese";
 let expView = "lista";
 let incView = "lista";
@@ -286,15 +305,46 @@ function save() {
   localStorage.setItem("budget_inc", JSON.stringify(incomes));
 }
 
-const mk = monthKey(today());
+let mk = monthKey(today());
+const todayMk = mk;
 
-function totalExp() { return expenses.filter(e=>monthKey(e.date)===mk).reduce((s,e)=>s+e.amount,0); }
-function totalInc() { return incomes.filter(i=>monthKey(i.date)===mk).reduce((s,i)=>s+incassatoNetto(i),0); }
+function mkValue(k) { const [y,m]=k.split("-").map(Number); return y*12+m; }
+function labelForMk(k) { const [y,m]=k.split("-").map(Number); return `${MONTHS[m]} ${y}`; }
+function shiftMonth(delta) {
+  const [y,m] = mk.split("-").map(Number);
+  const d = new Date(y, m+delta, 1);
+  const newMk = `${d.getFullYear()}-${d.getMonth()}`;
+  if(mkValue(newMk) > mkValue(todayMk)) return; // non si va oltre il mese corrente
+  mk = newMk;
+  updateMonthNav();
+  renderAll();
+}
+function updateMonthNav() {
+  document.getElementById("hdr-month").textContent = labelForMk(mk);
+  document.getElementById("month-next-btn").disabled = mkValue(mk) >= mkValue(todayMk);
+}
+function trailingMonths(k, n) {
+  const [y,m] = k.split("-").map(Number);
+  const arr=[];
+  for(let i=n-1;i>=0;i--){ const d=new Date(y,m-i,1); arr.push(`${d.getFullYear()}-${d.getMonth()}`); }
+  return arr;
+}
+function yearAgoMk(k) { const [y,m]=k.split("-").map(Number); return `${y-1}-${m}`; }
+function shortMonthLabel(k) {
+  const [y,m]=k.split("-").map(Number);
+  const [cy]=mk.split("-").map(Number);
+  return MONTHS[m] + (y!==cy ? ` '${String(y).slice(2)}` : "");
+}
+
+function expTotalForMonth(k) { return expenses.filter(e=>monthKey(e.date)===k).reduce((s,e)=>s+e.amount,0); }
+function incTotalForMonth(k) { return incomes.filter(i=>monthKey(i.date)===k).reduce((s,i)=>s+incassatoNetto(i),0); }
+function totalExp() { return expTotalForMonth(mk); }
+function totalInc() { return incTotalForMonth(mk); }
 function totalImponibile() { return incomes.filter(i=>monthKey(i.date)===mk&&incCat(i.category).isPiva).reduce((s,i)=>s+i.amount,0); }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 window.onload = function() {
-  document.getElementById("hdr-month").textContent = monthLabel(today());
+  updateMonthNav();
   document.getElementById("exp-date").value = today();
   document.getElementById("inc-date").value = today();
   buildExpCats();
@@ -581,7 +631,7 @@ function renderSaldo() {
   const hero=document.getElementById("saldo-hero");
   hero.style.background = saldo>=0?"linear-gradient(135deg,#062018,#0f0f13)":"linear-gradient(135deg,#1f0808,#0f0f13)";
   hero.style.border = `1px solid ${saldo>=0?"#10b98144":"#ef444444"}`;
-  document.getElementById("saldo-hero-label").textContent="Saldo "+monthLabel(today());
+  document.getElementById("saldo-hero-label").textContent="Saldo "+labelForMk(mk);
   document.getElementById("saldo-hero-val").textContent=(saldo>=0?"+":"−")+fmt(Math.abs(saldo));
   document.getElementById("saldo-hero-val").style.color=saldo>=0?"#10b981":"#ef4444";
   document.getElementById("saldo-hero-note").textContent=inc>0
@@ -594,6 +644,8 @@ function renderSaldo() {
   document.getElementById("saldo-bar-exp").style.width=`${exp/mx*100}%`;
   document.getElementById("saldo-bar-exp-val").textContent=fmt(exp);
   document.getElementById("saldo-imp-note").textContent=totImp>0?`Imponibile fatturato: ${fmt(totImp)} · IVA a credito: ${fmt(totF.iva)}`:"";
+  renderTrendChart();
+  renderYoyCompare();
   // fonti
   document.getElementById("saldo-fonti").innerHTML=INCOME_CATS.map(c=>{
     const netto=incomes.filter(i=>monthKey(i.date)===mk&&i.category===c.id).reduce((s,i)=>s+incassatoNetto(i),0);
@@ -618,7 +670,59 @@ function renderSaldo() {
     </div>`;}).join("");
 }
 
-// ── ENTRY HTML ────────────────────────────────────────────────────────────
+// ── TREND CHART (ultimi mesi) ────────────────────────────────────────────
+function renderTrendChart() {
+  const months = trailingMonths(mk, 6);
+  const data = months.map(k => ({k, inc:incTotalForMonth(k), exp:expTotalForMonth(k)}));
+  const max = Math.max(1, ...data.map(d=>Math.max(d.inc,d.exp)));
+  const bars = data.map(d => {
+    const hInc = Math.max(2, Math.round(d.inc/max*100));
+    const hExp = Math.max(2, Math.round(d.exp/max*100));
+    const sel = d.k===mk;
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:6px;min-width:0">
+      <div style="display:flex;align-items:flex-end;gap:3px;height:90px">
+        <div title="Incassato ${fmt(d.inc)}" style="width:9px;height:${hInc}%;background:#10b981;border-radius:3px 3px 0 0"></div>
+        <div title="Spese ${fmt(d.exp)}" style="width:9px;height:${hExp}%;background:#ef4444;border-radius:3px 3px 0 0"></div>
+      </div>
+      <span style="font-size:10px;white-space:nowrap;color:${sel?"#f1f5f9":"#64748b"};font-weight:${sel?700:500}">${shortMonthLabel(d.k)}</span>
+    </div>`;
+  }).join("");
+  document.getElementById("trend-chart").innerHTML = `
+    <div style="display:flex;align-items:flex-end;gap:4px;padding-top:6px">${bars}</div>
+    <div style="display:flex;gap:14px;margin-top:12px;font-size:11px;color:#94a3b8">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#10b981;margin-right:4px"></span>Incassato netto</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#ef4444;margin-right:4px"></span>Spese</span>
+    </div>`;
+}
+
+// ── CONFRONTO ANNO PRECEDENTE ─────────────────────────────────────────────
+function renderYoyCompare() {
+  const prevK = yearAgoMk(mk);
+  const el = document.getElementById("yoy-compare");
+  const hasPrevData = expenses.some(e=>monthKey(e.date)===prevK) || incomes.some(i=>monthKey(i.date)===prevK);
+  if(!hasPrevData) {
+    el.innerHTML = `<p style="margin:0;font-size:12px;color:#475569">Nessun dato per ${labelForMk(prevK)}</p>`;
+    return;
+  }
+  const curInc=incTotalForMonth(mk), curExp=expTotalForMonth(mk);
+  const prevInc=incTotalForMonth(prevK), prevExp=expTotalForMonth(prevK);
+  function row(label, cur, prev, positiveIsGood) {
+    const diff = prev ? ((cur-prev)/prev*100) : (cur>0?100:0);
+    const up = diff>=0;
+    const good = positiveIsGood ? up : !up;
+    const color = Math.round(diff)===0 ? "#64748b" : (good?"#10b981":"#ef4444");
+    return `<div class="info-row">
+      <div style="flex:1">
+        <p style="margin:0;font-size:13px;color:#e2e8f0;font-weight:500">${label}</p>
+        <p style="margin:0;font-size:10px;color:#475569">${fmt(cur)} vs ${fmt(prev)} (${labelForMk(prevK)})</p>
+      </div>
+      <span style="font-size:13px;font-weight:700;color:${color}">${up?"▲":"▼"} ${Math.abs(Math.round(diff))}%</span>
+    </div>`;
+  }
+  el.innerHTML = row("Incassato netto", curInc, prevInc, true) + row("Spese", curExp, prevExp, false);
+}
+
+
 function entryHTML(e, c, type) {
   return `<div class="entry">
     <div class="entry-icon" style="background:${c.color}22">${c.emoji}</div>
