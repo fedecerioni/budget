@@ -42,13 +42,9 @@
   .field-label{display:block;font-size:11px;color:#6b675d;margin-bottom:5px;font-weight:500;letter-spacing:.5px;text-transform:uppercase}
   .input{width:100%;min-width:0;max-width:100%;padding:10px 12px;border-radius:8px;border:1px solid #cdd6db;background:#eef2f5;color:#332f27;font-size:14px;outline:none;overflow:hidden}
   input[type=date].input{-webkit-min-logical-width:0;overflow:hidden}
-  .grid2{display:flex;gap:10px;margin-bottom:10px}
-  .grid2>div{flex:1 1 0;width:0;min-width:0}
+  .grid2{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+  .grid2>div{width:auto}
   .grid2 .input{width:100%}
-  @media (max-width:380px){
-    .grid2{flex-direction:column}
-    .grid2>div{width:auto;flex:none}
-  }
   .cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
   .cat-btn{padding:5px 10px;border-radius:8px;font-size:12px;border:none;cursor:pointer;font-weight:500;color:#7d7a6e;background:linear-gradient(135deg,#f1f5f7 0%,#d3dadf 100%);transition:all .15s}
   .cat-btn span{font-size:10px;opacity:.7;margin-left:3px}
@@ -138,9 +134,9 @@
         <p class="hdr-card-label">Incassato</p>
         <p class="hdr-card-val" style="color:#3f9d5c"><span style="font-size:11px;opacity:.7">+</span> <span id="h-inc">0€</span></p>
       </div>
-      <div class="hdr-card" style="border:1px solid #a8585022">
+      <div class="hdr-card" style="border:1px solid #c0334f22">
         <p class="hdr-card-label">Spese</p>
-        <p class="hdr-card-val" style="color:#a85850"><span style="font-size:11px;opacity:.7">−</span> <span id="h-exp">0€</span></p>
+        <p class="hdr-card-val" style="color:#c0334f"><span style="font-size:11px;opacity:.7">−</span> <span id="h-exp">0€</span></p>
       </div>
       <div class="hdr-card" id="h-saldo-card" style="border:1px solid #45798522">
         <p class="hdr-card-label">Saldo</p>
@@ -231,8 +227,8 @@
           <div class="bar-bg"><div class="bar-fill" id="saldo-bar-inc" style="background:#3f9d5c"></div></div>
         </div>
         <div class="bar-row">
-          <div class="bar-header"><span style="font-size:13px;font-weight:600;color:#332f27">Spese</span><span id="saldo-bar-exp-val" style="font-size:13px;font-weight:700;color:#a85850"></span></div>
-          <div class="bar-bg"><div class="bar-fill" id="saldo-bar-exp" style="background:#a85850"></div></div>
+          <div class="bar-header"><span style="font-size:13px;font-weight:600;color:#332f27">Spese</span><span id="saldo-bar-exp-val" style="font-size:13px;font-weight:700;color:#c0334f"></span></div>
+          <div class="bar-bg"><div class="bar-fill" id="saldo-bar-exp" style="background:#c0334f"></div></div>
         </div>
         <p id="saldo-imp-note" style="margin:8px 0 0;font-size:11px;color:#8a8579"></p>
       </div>
@@ -600,8 +596,8 @@ function renderAll() {
   document.getElementById("h-saldo").textContent = fmtShort(saldo);
   const saldoCard = document.getElementById("h-saldo-card");
   const saldoVal = document.getElementById("h-saldo-val");
-  saldoCard.style.border = `1px solid ${saldo>=0?"#3f9d5c22":"#a8585022"}`;
-  saldoVal.style.color = saldo>=0?"#3f9d5c":"#a85850";
+  saldoCard.style.border = `1px solid ${saldo>=0?"#3f9d5c22":"#c0334f22"}`;
+  saldoVal.style.color = saldo>=0?"#3f9d5c":"#c0334f";
   renderExpList();
   renderIncList();
   if(currentTab==="saldo") renderSaldo();
@@ -698,10 +694,10 @@ function renderSaldo() {
   // hero
   const hero=document.getElementById("saldo-hero");
   hero.style.background = saldo>=0?"linear-gradient(135deg,#e8f3eb,#eef5fa)":"linear-gradient(135deg,#f9eae6,#eef5fa)";
-  hero.style.border = `1px solid ${saldo>=0?"#3f9d5c44":"#a8585044"}`;
+  hero.style.border = `1px solid ${saldo>=0?"#3f9d5c44":"#c0334f44"}`;
   document.getElementById("saldo-hero-label").textContent="Saldo "+labelForMk(mk);
   document.getElementById("saldo-hero-val").textContent=(saldo>=0?"+":"−")+fmt(Math.abs(saldo));
-  document.getElementById("saldo-hero-val").style.color=saldo>=0?"#3f9d5c":"#a85850";
+  document.getElementById("saldo-hero-val").style.color=saldo>=0?"#3f9d5c":"#c0334f";
   document.getElementById("saldo-hero-note").textContent=inc>0
     ? (saldo>=0?`Risparmio del ${Math.round(saldo/inc*100)}% sull'incassato netto`:"Spese superiori all'incassato netto")
     : "Nessuna entrata registrata";
@@ -733,7 +729,7 @@ function renderSaldo() {
     :catE.map(([id,val])=>{const c=expCat(id);return`<div class="info-row">
       <span style="font-size:18px">${c.emoji}</span>
       <span style="flex:1;font-size:13px;color:#332f27">${c.label}</span>
-      <span style="font-size:14px;font-weight:700;color:#a85850">${fmt(val)}</span>
+      <span style="font-size:14px;font-weight:700;color:#c0334f">${fmt(val)}</span>
       <span style="font-size:11px;color:#8a8579;min-width:32px;text-align:right">${exp?Math.round(val/exp*100):0}%</span>
     </div>`;}).join("");
 }
@@ -750,7 +746,7 @@ function renderTrendChart() {
     return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:6px;min-width:0">
       <div style="display:flex;align-items:flex-end;gap:3px;height:90px">
         <div title="Incassato ${fmt(d.inc)}" style="width:9px;height:${hInc}%;background:#3f9d5c;border-radius:3px 3px 0 0"></div>
-        <div title="Spese ${fmt(d.exp)}" style="width:9px;height:${hExp}%;background:#a85850;border-radius:3px 3px 0 0"></div>
+        <div title="Spese ${fmt(d.exp)}" style="width:9px;height:${hExp}%;background:#c0334f;border-radius:3px 3px 0 0"></div>
       </div>
       <span style="font-size:10px;white-space:nowrap;color:${sel?"#201f1a":"#6b675d"};font-weight:${sel?700:500}">${shortMonthLabel(d.k)}</span>
     </div>`;
@@ -759,7 +755,7 @@ function renderTrendChart() {
     <div style="display:flex;align-items:flex-end;gap:4px;padding-top:6px">${bars}</div>
     <div style="display:flex;gap:14px;margin-top:12px;font-size:11px;color:#7d7a6e">
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#3f9d5c;margin-right:4px"></span>Incassato netto</span>
-      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#a85850;margin-right:4px"></span>Spese</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#c0334f;margin-right:4px"></span>Spese</span>
     </div>`;
 }
 
@@ -778,7 +774,7 @@ function renderYoyCompare() {
     const diff = prev ? ((cur-prev)/prev*100) : (cur>0?100:0);
     const up = diff>=0;
     const good = positiveIsGood ? up : !up;
-    const color = Math.round(diff)===0 ? "#6b675d" : (good?"#3f9d5c":"#a85850");
+    const color = Math.round(diff)===0 ? "#6b675d" : (good?"#3f9d5c":"#c0334f");
     return `<div class="info-row">
       <div style="flex:1">
         <p style="margin:0;font-size:13px;color:#332f27;font-weight:500">${label}</p>
@@ -798,7 +794,7 @@ function entryHTML(e, c, type) {
       <p class="entry-name">${esc(e.note||c.label)}</p>
       <p class="entry-sub">${c.label} · ${new Date(e.date).toLocaleDateString("it-IT")}</p>
     </div>
-    <div class="entry-amount"><span style="font-size:15px;font-weight:700;color:#a85850">−${fmt(e.amount)}</span></div>
+    <div class="entry-amount"><span style="font-size:15px;font-weight:700;color:#c0334f">−${fmt(e.amount)}</span></div>
     <div class="entry-btns">
       <button class="icon-btn" style="background:${grad("#e3e9ed")}" onclick="editExp(${e.id})">✏️</button>
       <button class="icon-btn" style="background:${grad("#f6e1db")}" onclick="deleteExp(${e.id})">🗑️</button>
